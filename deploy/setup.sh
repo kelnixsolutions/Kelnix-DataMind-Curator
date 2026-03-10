@@ -27,6 +27,10 @@ if [ ! -f .env ]; then
     echo "⚠️  Edit $APP_DIR/.env with your API keys before starting"
 fi
 
+echo "=== Creating service user ==="
+id -u datamind &>/dev/null || useradd --system --no-create-home --shell /usr/sbin/nologin datamind
+chown -R datamind:datamind "$APP_DIR"
+
 echo "=== Creating systemd service ==="
 cat > /etc/systemd/system/datamind.service << 'UNIT'
 [Unit]
@@ -35,7 +39,8 @@ After=network.target redis.service
 
 [Service]
 Type=simple
-User=root
+User=datamind
+Group=datamind
 WorkingDirectory=/opt/datamind-curator
 EnvironmentFile=/opt/datamind-curator/.env
 ExecStart=/opt/datamind-curator/.venv/bin/uvicorn app:app --host 0.0.0.0 --port 8001

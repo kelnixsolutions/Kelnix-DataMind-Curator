@@ -123,11 +123,9 @@ def create_subscription_session(api_key: str, plan: str) -> dict[str, Any]:
 
 def handle_stripe_event(payload: bytes, sig_header: str) -> dict[str, str]:
     webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
-    if webhook_secret:
-        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-    else:
-        import json as _json
-        event = stripe.Event.construct_from(_json.loads(payload), stripe.api_key)
+    if not webhook_secret:
+        raise ValueError("STRIPE_WEBHOOK_SECRET not configured. Cannot verify webhook signature.")
+    event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
 
     event_type = event["type"]
 

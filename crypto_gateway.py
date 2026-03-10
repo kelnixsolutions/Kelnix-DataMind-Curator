@@ -78,7 +78,7 @@ async def get_payment_status(payment_id: str) -> dict[str, Any]:
 def verify_ipn_signature(payload: dict, sig_header: str) -> bool:
     secret = os.environ.get("NOWPAYMENTS_IPN_SECRET", "")
     if not secret:
-        return True
+        raise ValueError("NOWPAYMENTS_IPN_SECRET not configured. Cannot verify IPN signature.")
     sorted_payload = dict(sorted(payload.items()))
     import json
     payload_str = json.dumps(sorted_payload, separators=(",", ":"))

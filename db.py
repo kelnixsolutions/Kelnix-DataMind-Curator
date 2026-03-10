@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
+import os
 import secrets
 import sqlite3
 import threading
@@ -8,6 +11,29 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional
+
+
+# ── Simple encryption for connection strings ─────────────────────────────
+# XOR-based obfuscation using a server-side key. Not military-grade, but
+# prevents plaintext credentials if the DB file is exposed.
+
+def _get_encryption_key() -> bytes:
+    raw = os.environ.get("ANTHROPIC_API_KEY", "datamind-default-key")
+    return hashlib.sha256(raw.encode()).digest()
+
+
+def _encrypt(plaintext: str) -> str:
+    key = _get_encryption_key()
+    data = plaintext.encode()
+    encrypted = bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
+    return base64.b64encode(encrypted).decode()
+
+
+def _decrypt(ciphertext: str) -> str:
+    key = _get_encryption_key()
+    data = base64.b64decode(ciphertext)
+    decrypted = bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
+    return decrypted.decode()
 
 DB_PATH = Path(__file__).parent / "datamind.db"
 
@@ -146,11 +172,13 @@ def insert_source(
     connection_string: str | None = None,
     config: dict | None = None,
 ) -> None:
+    encrypted_conn = _encrypt(connection_string) if connection_string else None
+    encrypted_config = _encrypt(json.dumps(config)) if config else None
     with _conn() as conn:
         conn.execute(
             "INSERT INTO sources (source_id, api_key, source_type, name, connection_string, config_json) "
             "VALUES (?, ?, ?, ?, ?, ?)",
-            (source_id, api_key, source_type, name, connection_string, json.dumps(config) if config else None),
+            (source_id, api_key, source_type, name, encrypted_conn, encrypted_config),
         )
 
 
@@ -160,8 +188,10 @@ def get_source(source_id: str) -> Optional[dict[str, Any]]:
     if row is None:
         return None
     d = dict(row)
+    if d.get("connection_string"):
+        d["connection_string"] = _decrypt(d["connection_string"])
     if d.get("config_json"):
-        d["config"] = json.loads(d["config_json"])
+        d["config"] = json.loads(_decrypt(d["config_json"]))
     return d
 
 
