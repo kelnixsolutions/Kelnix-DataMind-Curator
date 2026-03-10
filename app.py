@@ -312,6 +312,9 @@ async def api_query_data(req: QueryRequest, api_key: str = CreditAuth2):
         )
     except HTTPException:
         raise
+    except RuntimeError as e:
+        await refund_credits(api_key, 2)
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         await refund_credits(api_key, 2)
         raise HTTPException(status_code=500, detail=str(e))
@@ -422,6 +425,9 @@ async def api_summarize_data(req: SummarizeRequest, api_key: str = CreditAuth2):
         )
     except HTTPException:
         raise
+    except RuntimeError as e:
+        await refund_credits(api_key, 2)
+        raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         await refund_credits(api_key, 2)
         raise HTTPException(status_code=500, detail=str(e))

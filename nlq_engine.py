@@ -61,12 +61,21 @@ async def natural_language_to_sql(
     prompt += f"\nQuestion: {question}\n\nGenerate the SQL query:"
 
     client = _get_client()
-    response = await client.messages.create(
-        model=NLQ_MODEL,
-        max_tokens=512,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    try:
+        response = await client.messages.create(
+            model=NLQ_MODEL,
+            max_tokens=512,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except anthropic.AuthenticationError:
+        raise RuntimeError("AI service authentication failed. Please contact support.")
+    except anthropic.RateLimitError:
+        raise RuntimeError("AI service is temporarily overloaded. Please try again in a few moments.")
+    except anthropic.APIStatusError as e:
+        raise RuntimeError(f"AI service unavailable (status {e.status_code}). Please try again later.")
+    except anthropic.APIConnectionError:
+        raise RuntimeError("Could not connect to AI service. Please try again later.")
 
     sql = response.content[0].text.strip()
 
