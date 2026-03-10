@@ -106,7 +106,12 @@ async def connect_source(
         openWorldHint=False,
     ),
 )
-async def list_sources() -> dict[str, Any]:
+async def list_sources(
+    include_status: Annotated[bool, Field(
+        description="Set to true to include connection status details for each source. Default is false for a compact listing.",
+        default=False,
+    )] = False,
+) -> dict[str, Any]:
     """List all connected data sources with their status and type.
 
     Returns source_id, name, type, status, and creation date for each source.
