@@ -17,6 +17,19 @@ def _headers() -> dict[str, str]:
     }
 
 
+async def get_min_amount(crypto: str) -> float:
+    """Get minimum payment amount for a cryptocurrency."""
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            f"{BASE_URL}/min-amount",
+            params={"currency_from": crypto, "currency_to": "usd"},
+            headers=_headers(),
+        )
+        if resp.status_code == 200:
+            return float(resp.json().get("min_amount", 0))
+    return 0
+
+
 async def get_estimated_price(fiat_amount: float, fiat_currency: str, crypto: str) -> dict[str, Any]:
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(
@@ -24,6 +37,8 @@ async def get_estimated_price(fiat_amount: float, fiat_currency: str, crypto: st
             params={"amount": fiat_amount, "currency_from": fiat_currency, "currency_to": crypto},
             headers=_headers(),
         )
+        if resp.status_code == 403:
+            raise ValueError("NOWPayments authentication failed. Check NOWPAYMENTS_API_KEY.")
         resp.raise_for_status()
         data = resp.json()
     return {"estimated_amount": data.get("estimated_amount", 0), "rate": data.get("rate", 0)}
@@ -49,6 +64,14 @@ async def create_payment(
 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(f"{BASE_URL}/payment", json=body, headers=_headers())
+        if resp.status_code == 400:
+            error = resp.json()
+            if error.get("code") == "AMOUNT_MINIMAL_ERROR":
+                raise ValueError(
+                    f"Amount too low for {crypto_currency.upper()}. "
+                    f"Try a larger credit pack or use a stablecoin like USDT or USDC."
+                )
+            raise ValueError(f"Payment creation failed: {error.get('message', resp.text)}")
         resp.raise_for_status()
         data = resp.json()
 
