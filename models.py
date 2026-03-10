@@ -76,7 +76,25 @@ class FetchResponse(BaseModel):
     total_available: Optional[int] = None
 
 
-# ── Pipeline models ────────────────────────────────────────────────────
+# ── Pipeline request models ────────────────────────────────────────────
+
+class CleanRequest(BaseModel):
+    records: list[dict] = Field(..., description="Records to clean/standardize")
+    rules: Optional[dict[str, str]] = Field(None, description="Field-level formatting rules")
+
+
+class DedupRequest(BaseModel):
+    records: list[dict] = Field(..., description="Records to deduplicate")
+    keys: Optional[list[str]] = Field(None, description="Fields to use as dedup keys")
+
+
+class RedactRequest(BaseModel):
+    records: list[dict] = Field(..., description="Records containing PII to redact")
+    fields: Optional[list[str]] = Field(None, description="Specific fields to redact")
+    replacement: str = Field("[REDACTED]", description="Replacement string for PII values")
+
+
+# ── Pipeline response models ──────────────────────────────────────────
 
 class CleanResult(BaseModel):
     records_in: int
@@ -100,7 +118,21 @@ class RedactResult(BaseModel):
     redacted_data: list[dict]
 
 
-# ── Context models ─────────────────────────────────────────────────────
+# ── Context request models ─────────────────────────────────────────────
+
+class BuildContextRequest(BaseModel):
+    source_ids: list[str] = Field(..., description="Source IDs to build context from")
+    query: Optional[str] = Field(None, description="Optional query to rank context relevance")
+    max_tokens: int = Field(4000, ge=100, le=100000, description="Maximum tokens for context")
+
+
+class SummarizeRequest(BaseModel):
+    source_id: str = Field(..., description="Source to summarize")
+    table: Optional[str] = Field(None, description="Specific table to summarize")
+    question: Optional[str] = Field(None, description="Specific question to answer about the data")
+
+
+# ── Context response models ───────────────────────────────────────────
 
 class ContextChunk(BaseModel):
     content: str
@@ -123,7 +155,15 @@ class SummarizeResponse(BaseModel):
     sources_used: list[str]
 
 
-# ── Search models ──────────────────────────────────────────────────────
+# ── Search request models ──────────────────────────────────────────────
+
+class SearchRequest(BaseModel):
+    query: str = Field(..., description="Semantic search query")
+    source_id: Optional[str] = Field(None, description="Limit search to a specific source")
+    n_results: int = Field(10, ge=1, le=100, description="Number of results to return")
+
+
+# ── Search response models ─────────────────────────────────────────────
 
 class SearchResult(BaseModel):
     content: str

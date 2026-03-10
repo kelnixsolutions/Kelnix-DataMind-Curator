@@ -19,6 +19,8 @@ import db
 import tools
 from models import (
     BalanceResponse,
+    BuildContextRequest,
+    BuildContextResponse,
     BuyCreditsCryptoRequest,
     BuyCreditsCryptoResponse,
     BuyCreditsRequest,
@@ -26,18 +28,28 @@ from models import (
     CheckBalanceResponse,
     CheckPaymentStatusRequest,
     CheckPaymentStatusResponse,
+    CleanRequest,
+    CleanResult,
     ConnectSourceRequest,
     ConnectSourceResponse,
     CreditHistoryEntry,
+    DedupRequest,
+    DedupResult,
     FetchRequest,
     FetchResponse,
     ListSourcesResponse,
     QueryRequest,
     QueryResponse,
+    RedactRequest,
+    RedactResult,
     RegisterAgentRequest,
     RegisterAgentResponse,
+    SearchRequest,
+    SearchResponse,
     SubscribeRequest,
     SubscribeResponse,
+    SummarizeRequest,
+    SummarizeResponse,
     TestSourceResponse,
 )
 from webhooks import check_low_balance
@@ -95,6 +107,11 @@ def credit_cost(cost: int):
 CreditAuth = credit_cost(1)
 CreditAuth2 = credit_cost(2)
 CreditAuth3 = credit_cost(3)
+
+
+async def refund_credits(api_key: str, cost: int) -> None:
+    """Refund credits on failed operations."""
+    db.add_credits(api_key, cost, reason="refund_failed_operation")
 
 
 # ── MCP integration ────────────────────────────────────────────────────
@@ -257,14 +274,19 @@ async def register_agent(req: RegisterAgentRequest):
 
 @app.post("/sources/connect", response_model=ConnectSourceResponse)
 async def api_connect_source(req: ConnectSourceRequest, api_key: str = CreditAuth):
-    result = await tools.connect_source(
-        source_type=req.source_type,
-        name=req.name,
-        connection_string=req.connection_string,
-        config=req.config,
-        api_key=api_key,
-    )
-    return result
+    try:
+        return await tools.connect_source(
+            source_type=req.source_type,
+            name=req.name,
+            connection_string=req.connection_string,
+            config=req.config,
+            api_key=api_key,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await refund_credits(api_key, 1)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/sources", response_model=ListSourcesResponse)
@@ -281,23 +303,128 @@ async def api_test_source(source_id: str, api_key: str = Auth):
 
 @app.post("/data/query", response_model=QueryResponse)
 async def api_query_data(req: QueryRequest, api_key: str = CreditAuth2):
-    return await tools.query_data(
-        source_id=req.source_id,
-        query=req.query,
-        mode=req.mode,
-        limit=req.limit,
-    )
+    try:
+        return await tools.query_data(
+            source_id=req.source_id,
+            query=req.query,
+            mode=req.mode,
+            limit=req.limit,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await refund_credits(api_key, 2)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/data/fetch", response_model=FetchResponse)
 async def api_fetch_data(req: FetchRequest, api_key: str = CreditAuth):
-    return await tools.fetch_data(
-        source_id=req.source_id,
-        table=req.table,
-        limit=req.limit,
-        offset=req.offset,
-        filters=req.filters,
-    )
+    try:
+        return await tools.fetch_data(
+            source_id=req.source_id,
+            table=req.table,
+            limit=req.limit,
+            offset=req.offset,
+            filters=req.filters,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await refund_credits(api_key, 1)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/data/search", response_model=SearchResponse)
+async def api_search_data(req: SearchRequest, api_key: str = CreditAuth2):
+    try:
+        return await tools.search_data(
+            query=req.query,
+            source_id=req.source_id,
+            n_results=req.n_results,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await refund_credits(api_key, 2)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Pipeline endpoints ────────────────────────────────────────────────
+
+@app.post("/pipeline/clean", response_model=CleanResult)
+async def api_clean_data(req: CleanRequest, api_key: str = CreditAuth2):
+    try:
+        return await tools.clean_data(
+            records=req.records,
+            rules=req.rules,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await refund_credits(api_key, 2)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/pipeline/deduplicate", response_model=DedupResult)
+async def api_deduplicate_data(req: DedupRequest, api_key: str = CreditAuth):
+    try:
+        return await tools.deduplicate_data(
+            records=req.records,
+            keys=req.keys,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await refund_credits(api_key, 1)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/pipeline/redact_pii", response_model=RedactResult)
+async def api_redact_pii(req: RedactRequest, api_key: str = CreditAuth):
+    try:
+        return await tools.redact_pii_data(
+            records=req.records,
+            fields=req.fields,
+            replacement=req.replacement,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await refund_credits(api_key, 1)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Context endpoints ─────────────────────────────────────────────────
+
+@app.post("/context/build", response_model=BuildContextResponse)
+async def api_build_context(req: BuildContextRequest, api_key: str = CreditAuth3):
+    try:
+        return await tools.build_context(
+            source_ids=req.source_ids,
+            query=req.query,
+            max_tokens=req.max_tokens,
+            api_key=api_key,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await refund_credits(api_key, 3)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/context/summarize", response_model=SummarizeResponse)
+async def api_summarize_data(req: SummarizeRequest, api_key: str = CreditAuth2):
+    try:
+        return await tools.summarize_data(
+            source_id=req.source_id,
+            table=req.table,
+            question=req.question,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await refund_credits(api_key, 2)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── Balance ────────────────────────────────────────────────────────────
