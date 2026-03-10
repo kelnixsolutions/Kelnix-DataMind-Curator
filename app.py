@@ -86,7 +86,15 @@ async def require_credits(x_api_key: Annotated[str, Header()], cost: int = 1) ->
     return key
 
 
-CreditAuth = Depends(require_credits)
+def credit_cost(cost: int):
+    async def _dep(x_api_key: Annotated[str, Header()]) -> str:
+        return await require_credits(x_api_key, cost=cost)
+    return Depends(_dep)
+
+
+CreditAuth = credit_cost(1)
+CreditAuth2 = credit_cost(2)
+CreditAuth3 = credit_cost(3)
 
 
 # ── MCP integration ────────────────────────────────────────────────────
@@ -272,7 +280,7 @@ async def api_test_source(source_id: str, api_key: str = Auth):
 # ── Data endpoints ─────────────────────────────────────────────────────
 
 @app.post("/data/query", response_model=QueryResponse)
-async def api_query_data(req: QueryRequest, api_key: str = CreditAuth):
+async def api_query_data(req: QueryRequest, api_key: str = CreditAuth2):
     return await tools.query_data(
         source_id=req.source_id,
         query=req.query,
