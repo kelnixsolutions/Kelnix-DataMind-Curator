@@ -1,0 +1,23 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      datamindApiKey:
+        type: string
+        title: DataMind API Key
+        description: Your Kelnix DataMind Curator API key. Get one free at https://datamind-api.kelnix.org/docs
+      anthropicApiKey:
+        type: string
+        title: Anthropic API Key
+        description: Optional Anthropic API key override. If not set, the server uses its own key.
+    required: []
+  commandFunction: |
+    (config) => ({
+      command: 'python',
+      args: ['mcp_server.py'],
+      env: {
+        DATAMIND_API_KEY: config.datamindApiKey ?? '',
+        ANTHROPIC_API_KEY: config.anthropicApiKey ?? '',
+      },
+    })

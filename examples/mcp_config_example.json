@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "kelnix-datamind-curator": {
+      "url": "https://datamind-api.kelnix.org/stream/mcp/",
+      "headers": {
+        "X-API-Key": "dm_YOUR_API_KEY_HERE"
+      }
+    }
+  }
+}
