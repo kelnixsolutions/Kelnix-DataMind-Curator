@@ -1,0 +1,33 @@
+{
+  "name": "kelnix-datamind-curator",
+  "display_name": "Kelnix DataMind Curator",
+  "description": "AI-Ready Data & Context Engineering API. Connect any data source, query with natural language, clean and standardize data, build AI-ready context packages, and redact PII automatically. 25 free credits on signup.",
+  "icon": "https://datamind-api.kelnix.org/icon.png",
+  "homepage": "https://kelnix.org",
+  "repository": "https://github.com/kelnixsolutions/Kelnix-DataMind-Curator",
+  "license": "MIT",
+  "categories": ["data", "analytics", "ai"],
+  "tags": ["data", "nlq", "pii", "rag", "context", "postgresql", "vector-search", "deduplication"],
+  "endpoints": {
+    "mcp": "https://datamind-api.kelnix.org/stream/mcp/",
+    "docs": "https://datamind-api.kelnix.org/docs",
+    "pricing": "https://datamind-api.kelnix.org/pricing"
+  },
+  "tools": [
+    "sources.connect",
+    "sources.list",
+    "sources.test",
+    "data.query",
+    "data.fetch",
+    "data.search",
+    "pipeline.clean",
+    "pipeline.deduplicate",
+    "pipeline.redact_pii",
+    "context.build",
+    "context.summarize",
+    "credits.check_balance"
+  ],
+  "related_servers": [
+    "kelnixsolutions/kelnix-receipt-mcp-api"
+  ]
+}
