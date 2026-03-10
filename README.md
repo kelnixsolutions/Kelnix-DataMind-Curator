@@ -15,6 +15,12 @@
   <a href="https://kelnix.org">🌐 Website</a>
 </p>
 
+<p align="center">
+  <a href="https://glama.ai/mcp/servers/kelnixsolutions/kelnix-datamind-curator">
+    <img width="380" height="200" src="https://glama.ai/mcp/servers/kelnixsolutions/kelnix-datamind-curator/badge" alt="Glama MCP Server Badge" />
+  </a>
+</p>
+
 ---
 
 One API to unify, clean, and serve your data to AI agents. ⚡
