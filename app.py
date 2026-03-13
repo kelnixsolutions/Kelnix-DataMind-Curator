@@ -266,6 +266,12 @@ async def server_card():
 
 @app.post("/register", response_model=RegisterAgentResponse)
 async def register_agent(req: RegisterAgentRequest):
+    """Register a new agent. Returns API key + 25 free credits.
+
+    IMPORTANT: The returned api_key is the agent's permanent identity.
+    Store it securely — it cannot be recovered if lost. All credits,
+    data sources, and billing history are tied to this key.
+    """
     result = db.create_agent(req.agent_name, req.org_id)
     return result
 
